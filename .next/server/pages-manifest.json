@@ -1,0 +1,9 @@
+{
+  "/_app": "pages/_app.js",
+  "/_error": "pages/_error.js",
+  "/api/checkout_sessions": "pages/api/checkout_sessions.js",
+  "/api/create-payment-intent": "pages/api/create-payment-intent.js",
+  "/return": "pages/return.js",
+  "/api/webhooks": "pages/api/webhooks.js",
+  "/_document": "pages/_document.js"
+}
