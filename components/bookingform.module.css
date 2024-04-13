@@ -18,6 +18,19 @@
     box-sizing: border-box; /* Makes sure the padding and border are included in the width */
 }
 
+.radio-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+@media (max-width: 600px) {
+    .radio-buttons {
+        /* flex-direction: row; */
+        justify-content: space-between;
+    }
+}
+
 .checkbox {
     margin-top: 5px;
 }
@@ -44,3 +57,12 @@
     color: red;
     font-size: 14px;
 }
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+  }
+  
+  .checkbox-label input[type="checkbox"] {
+    margin-right: 10px;
+  }
