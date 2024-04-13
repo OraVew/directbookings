@@ -16,7 +16,14 @@ export default async function handler(req, res) {
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: amount, // ensure this is in the smallest unit of currency
                 currency: 'usd',
+                payment_method_types: ['card'],
             });
+
+            // await stripe.prices.create(
+            //   {
+            //     unit_amount: paymentIntent.amount
+            //   }
+            // )
             res.status(200).json({ clientSecret: paymentIntent.client_secret });
         } catch (err) {
             // handle errors
