@@ -7,7 +7,7 @@ import {
 import styles from './BookingForm.module.css';
 import { useForm } from 'react-hook-form';
 
-export default function CheckoutForm() {
+export default function CheckoutForm({ clientSecret }) {
   const stripe = useStripe();
   const elements = useElements();
   const { register, handleSubmit, formState: { errors } } = useForm();
@@ -76,51 +76,67 @@ export default function CheckoutForm() {
     setPriceBreakdown(breakdown);  // Assuming you have a state to store this breakdown
   };
 
-  const onPaymentSubmit = async (e) => {
-    e.preventDefault();
-  
-    if (!stripe || !elements) {
-      return;
-    }
-  
-    setIsLoading(true);
-  
-    // Send the total price to the server to create/update the payment intent
-    const response = await fetch('/api/create-payment-intent', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        items: items,  // Assuming 'items' is an array of item details
-        totalPrice: totalPrice,  // This is the total price calculated
-      }),
-    });
-  
-    const paymentIntentResponse = await response.json();
-  
-    if (response.ok) {
-      const { error } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          // Customize return URL after payment
-          return_url: "http://localhost:3000/payment-success",
-        },
-        // Use the client secret returned from the server
-        payment_intent: paymentIntentResponse.clientSecret
-      });
-  
-      if (error) {
-        setMessage(error.message);
-      } else {
-        setMessage("Your payment is being processed.");
+    const onPaymentSubmit = async (event) => {
+      event.preventDefault();
+    
+      if (!stripe || !elements) {
+        // Stripe.js has not yet loaded or Elements are not ready.
+        return;
       }
-    } else {
-      setMessage(paymentIntentResponse.error);
-    }
+    
+      setIsLoading(true); // Start loading indication.
+    
+      try {
+        // Prepare the payload to send to your API
+        const paymentIntentData = {
+          // Convert totalPrice to the smallest currency unit, e.g., cents if using USD
+          amount: totalPrice * 100,
+        };
+    
+        console.log("Data sent to server:", paymentIntentData);
+
+        // Fetch call to the server to create a PaymentIntent with the specified amount
+        const response = await fetch('/api/create-payment-intent', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          // Pass the paymentIntentData as the body, properly stringified
+          body: JSON.stringify(paymentIntentData),
+        });
+    
+        // Handle the response from your server
+        const paymentIntentResponse = await response.json();
+    
+        if (response.ok) {
+          // If the response is successful, use the client secret to proceed with the payment
+          const result = await stripe.confirmCardPayment(paymentIntentResponse.clientSecret, {
+            // Additional payment method details go here
+            // e.g., card: elements.getElement(CardElement)
+          });
+    
+          // Handle the result of the payment attempt
+          if (result.error) {
+            setMessage(result.error.message);
+          } else {
+            if (result.paymentIntent.status === 'succeeded') {
+              setMessage('Payment successful!');
+              // Additional steps upon successful payment
+            }
+          }
+        } else {
+          // If the response is not ok, handle errors returned from your server
+          setMessage(paymentIntentResponse.error);
+        }
+      } catch (error) {
+        // Catch any errors that occurred during the fetch call
+        setMessage(error.message);
+      } finally {
+        setIsLoading(false); // Stop loading indication regardless of the outcome
+      }
+    };
+    
   
-    setIsLoading(false);
-  };
   
 
   return (

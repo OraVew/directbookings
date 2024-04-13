@@ -1,44 +1,74 @@
 "use client"
-import React from "react";
+"use client"
+import React, { useEffect, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
-
 import CheckoutForm from "../components/CheckoutForm";
 
-// Make sure to call loadStripe outside of a component’s render to avoid
-// recreating the Stripe object on every render.
-// This is your test publishable API key.
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
 export default function App() {
-  const [clientSecret, setClientSecret] = React.useState("");
+  const [clientSecret, setClientSecret] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  React.useEffect(() => {
-    // Create PaymentIntent as soon as the page loads
-    fetch("/api/create-payment-intent", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items: [{ amount: 1000 }] }),
-    })
-      .then((res) => res.json())
-      .then((data) => setClientSecret(data.clientSecret));
+  useEffect(() => {
+    let isMounted = true;  // Flag to track mounted state
+
+    const fetchClientSecret = async () => {
+      try {
+        const response = await fetch("/api/create-payment-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: 1000 }),
+      })
+      .then(response => {
+          if (!response.ok) {
+              throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return response.json();
+      })
+      .then(data => {
+          if (!data.clientSecret) {
+              throw new Error("No client secret in response");
+          }
+          setClientSecret(data.clientSecret);
+          setLoading(false);
+      })
+      .catch(error => {
+          console.error('Error fetching clientSecret:', error);
+          setLoading(false);
+      });
+      
+      } catch (error) {
+        console.error('Error fetching clientSecret:', error);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchClientSecret();
+
+    return () => {
+      isMounted = false;  // Clean up function
+    };
   }, []);
 
-  const appearance = {
-    theme: 'stripe',
-  };
-  const options = {
-    clientSecret,
-    appearance,
-  };
+  if (loading) {
+    return <div>Loading payment form...</div>;
+  }
+
+  if (!clientSecret) {
+    return <div>Failed to load payment form. Please try again later.</div>;
+  }
 
   return (
     <div className="App">
-      {clientSecret && (
-        <Elements options={options} stripe={stripePromise}>
-          <CheckoutForm />
-        </Elements>
-      )}
+      
+      <Elements stripe={stripePromise} options={{ clientSecret }}>
+  <CheckoutForm />
+</Elements>
     </div>
   );
 }
